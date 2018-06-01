@@ -83,11 +83,9 @@ data.take(1).foreach(println)
 val fw = new FileWriter(new File("data/all-crimes-locations-s.csv"))
 val printer = new CSVPrinter(fw, CSVFormat.RFC4180.withHeader("latitude", "longitude"))
 
-data.map {
-  crime => s"${crime.latitude},${crime.longitude}"
-}.toLocalIterator.foreach {
-  record =>
-    printer.printRecord(record)
+data.toLocalIterator.foreach {
+  crime =>
+    printer.printRecord(crime.latitude.toString, crime.longitude.toString)
 }
 
 fw.close()
