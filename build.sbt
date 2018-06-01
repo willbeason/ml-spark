@@ -16,3 +16,5 @@ libraryDependencies += "org.apache.hadoop" % "hadoop-aws" % hadoopVersion
 libraryDependencies += "org.apache.hadoop" % "hadoop-client" % hadoopVersion
 
 libraryDependencies += "com.amazonaws" % "aws-java-sdk-s3" % "1.11.297"
+
+libraryDependencies += "org.apache.spark" %% "spark-mllib" % "2.3.0"

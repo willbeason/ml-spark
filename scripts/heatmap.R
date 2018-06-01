@@ -21,6 +21,8 @@ plot(h100)
 
 h1000 <- hexbin(data2, xbins=1000)
 
+h1000 <- smooth.hexbin(h1000)
+
 png(filename = "heatmap1k.png", width=3000,height=3000)
 plot(h1000)
 dev.off()

@@ -2,6 +2,12 @@ import java.io.{File, FileWriter}
 
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
 import org.apache.spark.SparkContext
+import org.apache.spark.ml.classification.RandomForestClassifier
+import org.apache.spark.mllib.linalg.{DenseVector, Vectors}
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.tree.configuration.BoostingStrategy
+import org.apache.spark.mllib.tree.model.RandomForestModel
+import org.apache.spark.mllib.tree.{GradientBoostedTrees, RandomForest}
 
 import scala.util.Try
 
@@ -34,7 +40,18 @@ case class Crime(
     latitude: Double, // 19
     longitude: Double, // 20
     location: String // 21
-) {}
+) {
+  def toLabeledPoint: Option[LabeledPoint] = {
+    Try(LabeledPoint(
+      if(arrest) 1.0 else 0.0,
+      Vectors.dense(
+        district.toDouble,
+        latitude,
+        longitude
+      )
+    )).toOption
+  }
+}
 
 object Crimes {
   def from(s: String): Option[Crime] = {
@@ -78,14 +95,38 @@ val data = lines.filter(_ != header).map(Crimes.from).collect {
 
 data.count()
 
-data.take(1).foreach(println)
+//data.take(1).foreach(println)
+//
+//val fw = new FileWriter(new File("data/all-crimes-locations-s.csv"))
+//val printer = new CSVPrinter(fw, CSVFormat.RFC4180.withHeader("latitude", "longitude"))
+//
+//data.toLocalIterator.foreach {
+//  crime =>
+//    printer.printRecord(crime.latitude.toString, crime.longitude.toString)
+//}
 
-val fw = new FileWriter(new File("data/all-crimes-locations-s.csv"))
-val printer = new CSVPrinter(fw, CSVFormat.RFC4180.withHeader("latitude", "longitude"))
+//fw.close()
 
-data.toLocalIterator.foreach {
-  crime =>
-    printer.printRecord(crime.latitude.toString, crime.longitude.toString)
+
+val splits = data.randomSplit(Array(0.7, 0.3))
+val (trainingData, testData) = (splits(0), splits(1))
+
+// The defaultParams for Classification use LogLoss by default.
+val boostingStrategy = BoostingStrategy.defaultParams("Classification")
+boostingStrategy.numIterations = 3 // Note: Use more iterations in practice.
+boostingStrategy.treeStrategy.numClasses = 2
+boostingStrategy.treeStrategy.maxDepth = 5
+// Empty categoricalFeaturesInfo indicates all features are continuous.
+boostingStrategy.treeStrategy.categoricalFeaturesInfo = Map[Int, Int]()
+
+val model = GradientBoostedTrees.train(trainingData.flatMap(_.toLabeledPoint), boostingStrategy)
+
+// Evaluate model on test instances and compute test error
+val labelAndPreds = testData.flatMap(_.toLabeledPoint).map { point =>
+  val prediction = model.predict(point.features)
+  (point.label, prediction)
 }
+val testErr = labelAndPreds.filter(r => r._1 != r._2).count.toDouble / testData.count()
+println("Test Error = " + testErr)
+println("Learned classification GBT model:\n" + model.toDebugString)
 
-fw.close()
