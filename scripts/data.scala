@@ -130,3 +130,6 @@ val testErr = labelAndPreds.filter(r => r._1 != r._2).count.toDouble / testData.
 println("Test Error = " + testErr)
 println("Learned classification GBT model:\n" + model.toDebugString)
 
+data.count()  // 6319300
+data.filter(_.arrest).count() // 1770059
+
